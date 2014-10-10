@@ -1,0 +1,67 @@
+<?php
+
+/**
+ * Implementation of hook_permission().
+ */
+function mysearch_permission() {
+  return array(
+    'access mysearch' => array(
+        'title' => 'Access My Search',
+        'description' => 'Allows a user to access search results',
+      )
+    );
+}
+
+/**
+ * Implementation of hook_menu().
+ * 
+ * 
+ */
+function mysearch_menu() {                           
+  $items['mysearch/%'] = array(                                           //using '%' to get a searcing world from path                                         
+    'page callback' => 'mysearch_searchpage',                            //include a page callback function, which is invoked when the registered path is requested.
+    'page arguments' => array(1),                                        //callback function uses pass as an argument
+    'access arguments' => array('access mysearch'),
+    'type' => MENU_SUGGESTED_ITEM,
+  );
+  return $items;
+}
+
+/**
+ * Menu callback provides a simple list of nodes matching the
+ * search term Example: hitting the URL:
+ *   http://domain.com/mysearch/example
+ * will return a list of links to nodes which have the word
+ * example in them.
+ */
+
+function mysearch_searchpage($searchterm) {
+ $content='';
+ $q=db_select('node','n');                                                //connect to the table 'node' and give it a nickname
+ $q->condition('status', 1);                                              //set the conditions - "POSTED"
+ $q->leftJoin('field_data_body', 'f', 'n.nid = f.entity_id' );            //make left join with table 'field_data_body
+ $q->condition('f.body_value', '%' . db_like($searchterm) . '%', 'LIKE'); //set the search condition "LIKE"
+ $q->fields('n',array('nid','title'));                                    //choose from database needing for search filds
+ $q = $q->extend('PagerDefault')->limit(10);                              //choose limit numbers of result records
+ $result = $q->execute();
+
+
+ //if any records not found  return corresponding message
+ if($result->rowCount()==0) {
+    $content = "<h2>Result of search for $searchterm not find</h2>";
+    return $content;
+ }
+ 
+ //if records exist return list of node titles links
+ $content = "<h2>Result search for $searchterm</h2><ul>";
+   while($record = $result->fetchAssoc()) {
+      $url = '../node/' . drupal_get_path_alias($record['nid']);
+      $content .= '<li><a href=' . $url . '>'. $record['title'].'</a></li>';
+   }
+ $content .='</ul>';
+
+ //display pager
+ $content.= theme('pager');
+ return $content;
+}
+ 
